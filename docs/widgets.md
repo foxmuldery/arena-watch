@@ -66,6 +66,17 @@ cd native && ./install.sh
 如果只是开发调试，宿主放在 `native/dist` 也可以；正式使用时请放到
 `/Applications`，否则系统可能不会在小组件库里列出它。
 
+也可以直接用 Xcode 跑（推荐用来验证小组件是否被系统接受）：
+
+```bash
+open native/ArenaWatchWidgets.xcodeproj
+# 选中 ArenaWatchWidgets target → Signing & Capabilities → 选择你的 Team
+# 选择 scheme ArenaWatchWidgets → Run
+```
+
+Xcode 会用开发签名安装并注册扩展，随后在「编辑小组件」里搜索 Arena Watch。
+这条路径不需要 Developer ID，但只适合本机调试。
+
 ## 构建（本机）
 
 需要 Xcode 26+ 与 [XcodeGen](https://github.com/yonaskolb/XcodeGen)：
