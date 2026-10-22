@@ -12,3 +12,4 @@ native/dist/
 native/ArenaWatchWidgets.xcodeproj/
 native/ArenaWatchWidgets/App/Resources/AppIcon.icns
 native/.swift-cache/
+native/.tools/

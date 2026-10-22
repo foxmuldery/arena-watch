@@ -79,12 +79,10 @@ Xcode 会用开发签名安装并注册扩展，随后在「编辑小组件」�
 
 ## 构建（本机）
 
-需要 Xcode 26+ 与 [XcodeGen](https://github.com/yonaskolb/XcodeGen)：
+需要 Xcode 26+ 与 [XcodeGen](https://github.com/yonaskolb/XcodeGen)（`build.sh`
+检测不到时会自动下载到 `native/.tools/`，无需 Homebrew）：
 
 ```bash
-# 任选其一放置 xcodegen
-#   brew install xcodegen
-#   或把 release 包解压到 ../tools/xcodegen/bin/xcodegen
 cd native
 ./build.sh                 # 本地临时签名（ad-hoc）
 ```

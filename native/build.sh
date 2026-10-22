@@ -10,13 +10,17 @@ cd "$(dirname "$0")"
 
 CONFIG="${CONFIG:-Release}"
 ROOT="$(cd .. && pwd)"
-XCODEGEN="${XCODEGEN:-$ROOT/../tools/xcodegen/bin/xcodegen}"
+XCODEGEN="${XCODEGEN:-$PWD/.tools/xcodegen/bin/xcodegen}"
 if [ ! -x "$XCODEGEN" ]; then
   XCODEGEN="$(command -v xcodegen || true)"
 fi
 if [ -z "$XCODEGEN" ]; then
-  echo "xcodegen not found: put it in tools/xcodegen or install with 'brew install xcodegen'" >&2
-  exit 1
+  echo "xcodegen not found; downloading a local copy…"
+  mkdir -p .tools
+  curl -sSL -o .tools/xcodegen.zip \
+    "https://github.com/yonaskolb/XcodeGen/releases/latest/download/xcodegen.zip"
+  unzip -oq .tools/xcodegen.zip -d .tools
+  XCODEGEN="$PWD/.tools/xcodegen/bin/xcodegen"
 fi
 
 # App icon comes from the shared generated icon so both apps match.
