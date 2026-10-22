@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { Settings } from '../shared/types'
+import type { Settings, UpdateState } from '../shared/types'
 
 const api = {
   listBoards: () => ipcRenderer.invoke('boards:list'),
@@ -14,6 +14,14 @@ const api = {
   getSettings: (): Promise<Settings> => ipcRenderer.invoke('settings:get'),
   setSettings: (patch: Partial<Settings>): Promise<Settings> => ipcRenderer.invoke('settings:set', patch),
   openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
+  getVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
+  getUpdateState: (): Promise<UpdateState> => ipcRenderer.invoke('update:state'),
+  checkForUpdates: (): Promise<UpdateState> => ipcRenderer.invoke('update:check'),
+  downloadUpdate: (): Promise<UpdateState> => ipcRenderer.invoke('update:download'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+  onUpdateState: (cb: (s: UpdateState) => void) => {
+    ipcRenderer.on('update:state', (_e, s: UpdateState) => cb(s))
+  },
   onUpdated: (cb: () => void) => {
     ipcRenderer.on('data:updated', () => cb())
   },

@@ -405,3 +405,64 @@ main {
   display: grid;
   gap: 6px;
 }
+
+.update-card {
+  margin-top: 14px;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.update-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.update-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.update-actions button {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.update-actions button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.update-actions button.primary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.update-msg {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.progress {
+  margin-top: 8px;
+  height: 5px;
+  background: var(--panel-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}

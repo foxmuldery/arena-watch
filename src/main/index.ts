@@ -4,6 +4,14 @@ import { BOARDS, fetchBoard, getBoardDef } from './adapters'
 import { diffBoard, diffWatch } from './diff'
 import { Store } from './store'
 import { ICON_DATA_URL } from './icon-data'
+import {
+  checkForUpdates,
+  downloadUpdate,
+  getUpdateState,
+  installUpdate,
+  onUpdateState,
+  setupAutoUpdater
+} from './updater'
 import type { ChangeEvent, Settings } from '../shared/types'
 
 let win: BrowserWindow | null = null
@@ -219,6 +227,12 @@ function registerIpc(): void {
   ipcMain.handle('settings:get', () => store.settings)
   ipcMain.handle('settings:set', (_e, patch: Partial<Settings>) => applySettings(patch))
 
+  ipcMain.handle('app:version', () => app.getVersion())
+  ipcMain.handle('update:state', () => getUpdateState())
+  ipcMain.handle('update:check', () => checkForUpdates())
+  ipcMain.handle('update:download', () => downloadUpdate())
+  ipcMain.handle('update:install', () => installUpdate())
+
   ipcMain.handle('app:openExternal', (_e, url: string) => {
     const allowed = ['lmarena.ai', 'artificialanalysis.ai', 'huggingface.co']
     try {
@@ -250,6 +264,8 @@ void app.whenReady().then(() => {
   createTray()
   app.setLoginItemSettings({ openAtLogin: store.settings.openAtLogin })
   startTimer()
+  onUpdateState((s) => broadcast('update:state', s))
+  setupAutoUpdater()
   setTimeout(() => void refreshAll(), 2500)
 
   app.on('activate', () => {

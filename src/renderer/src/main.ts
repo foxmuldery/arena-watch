@@ -1,5 +1,13 @@
 import './style.css'
-import type { BoardDef, ChangeEvent, Entry, Settings, Snapshot, WatchItem } from '../../shared/types'
+import type {
+  BoardDef,
+  ChangeEvent,
+  Entry,
+  Settings,
+  Snapshot,
+  UpdateState,
+  WatchItem
+} from '../../shared/types'
 
 interface BoardListItem extends BoardDef {
   subscribed: boolean
@@ -62,7 +70,9 @@ const state = {
   watches: [] as WatchListItem[],
   events: [] as ChangeEvent[],
   settings: null as Settings | null,
-  refreshing: false
+  refreshing: false,
+  appVersion: '',
+  update: { state: 'idle' } as UpdateState
 }
 
 const boardName = (id: string): string => state.boards.find((b) => b.id === id)?.name ?? id
@@ -295,11 +305,16 @@ function renderSettings(): void {
     <div class="setting-row"><label>窗口置顶</label><input type="checkbox" id="set-top" ${s.alwaysOnTop ? 'checked' : ''} /></div>
     <div class="setting-row"><label>变化时系统通知</label><input type="checkbox" id="set-notify" ${s.notifications ? 'checked' : ''} /></div>
     <div class="setting-row"><label>开机自启</label><input type="checkbox" id="set-login" ${s.openAtLogin ? 'checked' : ''} /></div>
+    <div class="update-card">
+      <div class="update-head"><span>版本 v${esc(state.appVersion || '—')}</span><span class="muted small">自动更新来自 GitHub Releases</span></div>
+      <div id="update-box"></div>
+    </div>
     <div class="about">
       <p>数据源：LMArena 官方数据集（Hugging Face，CC BY 4.0）；Artificial Analysis 公开榜单页（非官方解析，页面结构变化时可能失效）。</p>
-      <p class="muted">Arena Watch v0.1.0 · MIT License · 关闭窗口会最小化到托盘，托盘菜单可退出。</p>
+      <p class="muted">Arena Watch v${esc(state.appVersion || '0.1.0')} · MIT License · 关闭窗口会最小化到托盘，托盘菜单可退出。</p>
     </div>
   `
+  renderUpdateBox()
   ;($('#set-refresh') as HTMLSelectElement).addEventListener('change', async (e) => {
     state.settings = await window.arena.setSettings({ refreshMinutes: Number((e.target as HTMLSelectElement).value) })
   })
@@ -314,6 +329,37 @@ function renderSettings(): void {
   })
   ;($('#set-login') as HTMLInputElement).addEventListener('change', async (e) => {
     state.settings = await window.arena.setSettings({ openAtLogin: (e.target as HTMLInputElement).checked })
+  })
+}
+
+/* ---------------- update box ---------------- */
+
+function renderUpdateBox(): void {
+  const box = document.getElementById('update-box')
+  if (!box) return
+  const u = state.update
+  const busy = u.state === 'checking' || u.state === 'downloading'
+  const version = u.version ? ` v${esc(u.version)}` : ''
+  const downloading = u.state === 'downloading'
+  box.innerHTML = `
+    <div class="update-actions">
+      <button id="update-check" ${busy ? 'disabled' : ''}>${u.state === 'checking' ? '检查中…' : '检查更新'}</button>
+      ${u.state === 'available' ? `<button id="update-download" class="primary">下载${version}</button>` : ''}
+      ${u.state === 'downloaded' ? `<button id="update-install" class="primary">重启并安装</button>` : ''}
+    </div>
+    ${downloading ? `<div class="progress"><div class="progress-bar" style="width:${u.percent ?? 0}%"></div></div>` : ''}
+    ${u.message ? `<p class="update-msg ${u.state === 'error' ? 'err' : 'muted'}">${esc(u.message)}</p>` : ''}
+  `
+  document.getElementById('update-check')?.addEventListener('click', async () => {
+    state.update = await window.arena.checkForUpdates()
+    renderUpdateBox()
+  })
+  document.getElementById('update-download')?.addEventListener('click', async () => {
+    state.update = await window.arena.downloadUpdate()
+    renderUpdateBox()
+  })
+  document.getElementById('update-install')?.addEventListener('click', () => {
+    void window.arena.installUpdate()
   })
 }
 
@@ -366,6 +412,12 @@ async function init(): Promise<void> {
     await reloadAll()
   })
   state.settings = await window.arena.getSettings()
+  state.appVersion = await window.arena.getVersion()
+  state.update = await window.arena.getUpdateState()
+  window.arena.onUpdateState((u) => {
+    state.update = u
+    renderUpdateBox()
+  })
   renderSettings()
   await reloadAll()
   window.arena.onUpdated(() => void reloadAll())

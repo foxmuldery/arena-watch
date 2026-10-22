@@ -66,6 +66,16 @@ export interface Settings {
   openAtLogin: boolean
 }
 
+export interface UpdateState {
+  state: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error' | 'dev'
+  /** Version offered by the release feed */
+  version?: string
+  /** Download progress 0-100 */
+  percent?: number
+  /** Human-readable status (Chinese) */
+  message?: string
+}
+
 export const DEFAULT_SETTINGS: Settings = {
   refreshMinutes: 30,
   scoreJumpThreshold: 5,
