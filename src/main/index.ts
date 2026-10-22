@@ -4,7 +4,7 @@ import { join } from 'path'
 import { BOARDS, fetchBoard, getBoardDef } from './adapters'
 import { diffBoard, diffWatch } from './diff'
 import { Store } from './store'
-import { ICON_DATA_URL } from './icon-data'
+import { ICON_DATA_URL, TRAY_ICON_DATA_URL } from './icon-data'
 import {
   checkForUpdates,
   downloadUpdate,
@@ -88,7 +88,13 @@ function toggleWindow(): void {
 }
 
 function createTray(): void {
-  const icon = nativeImage.createFromDataURL(ICON_DATA_URL).resize({ width: 18, height: 18 })
+  // macOS menu bar: a black template image that the system tints for light /
+  // dark mode. Windows and Linux keep the coloured app icon.
+  const isMac = process.platform === 'darwin'
+  const icon = nativeImage
+    .createFromDataURL(isMac ? TRAY_ICON_DATA_URL : ICON_DATA_URL)
+    .resize({ width: 18, height: 18 })
+  if (isMac) icon.setTemplateImage(true)
   tray = new Tray(icon)
   tray.setToolTip('Arena Watch — 模型榜单盯梢')
   const menu = Menu.buildFromTemplate([

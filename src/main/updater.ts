@@ -31,10 +31,19 @@ function errText(err: unknown): string {
   if (/APPIMAGE/i.test(raw)) {
     return '当前安装方式不支持自动更新（AppImage 需要以 AppImage 方式运行）'
   }
-  if (/code signature|signature|ShipIt/i.test(raw)) {
+  if (/code signature|signature|ShipIt|ERR_UPDATER_SIGNATURE/i.test(raw)) {
     return '更新安装失败：macOS 需要签名的应用才能自动更新'
   }
-  return raw
+  if (/latest[^ ]*\.yml|ERR_UPDATER_CHANNEL_FILE_NOT_FOUND/i.test(raw)) {
+    return '更新清单暂不可用（新版本可能还在发布中），请稍后再试'
+  }
+  if (/app-update\.yml|ENOENT/i.test(raw)) {
+    return '当前构建缺少更新配置，免安装/开发模式不支持自动更新'
+  }
+  if (/EACCES|EPERM/i.test(raw)) {
+    return '自动更新缓存目录不可写，请检查系统权限'
+  }
+  return raw.length > 240 ? `${raw.slice(0, 240)}…` : raw
 }
 
 export function setupAutoUpdater(): void {
