@@ -122,6 +122,8 @@ main {
   overflow-x: auto;
   padding-bottom: 8px;
   scrollbar-width: none;
+  /* Hint that more boards sit off to the right. */
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 }
 
 .chips::-webkit-scrollbar {

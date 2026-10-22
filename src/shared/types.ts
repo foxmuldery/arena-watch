@@ -3,11 +3,13 @@ export interface BoardDef {
   /** Display name (Chinese) */
   name: string
   nameEn: string
-  source: 'lmarena' | 'artificial-analysis'
+  source: 'lmarena' | 'artificial-analysis' | 'swe-bench' | 'livebench' | 'huggingface'
   /** Score column label, e.g. "Elo" or "Index" */
   scoreLabel: string
   /** Human-facing leaderboard page */
   url: string
+  /** Optional caveat shown under the board title */
+  note?: string
 }
 
 export interface Entry {
@@ -54,6 +56,15 @@ export interface WatchItem {
   id: string
   boardId: string
   model: string
+}
+
+/** A watched model's presence on one board, matched across aliases. */
+export interface WatchRelated {
+  boardId: string
+  /** The name that board uses for this model */
+  model: string
+  current: Entry
+  history: (number | null)[]
 }
 
 export interface Settings {

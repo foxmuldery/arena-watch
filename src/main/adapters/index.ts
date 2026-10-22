@@ -1,6 +1,9 @@
 import type { BoardDef, Entry } from '../../shared/types'
 import { fetchLmArenaBoard } from './lmarena'
 import { fetchAaImageToVideo, fetchAaIntelligence } from './aa'
+import { fetchSweBenchVerified } from './swebench'
+import { fetchLiveBench } from './livebench'
+import { fetchHfOpenLlm } from './hf'
 
 export const BOARDS: BoardDef[] = [
   {
@@ -10,6 +13,24 @@ export const BOARDS: BoardDef[] = [
     source: 'lmarena',
     scoreLabel: 'Elo',
     url: 'https://lmarena.ai/leaderboard/text'
+  },
+  {
+    id: 'lmarena-coding',
+    name: 'LMArena 编程榜',
+    nameEn: 'LMArena Coding',
+    source: 'lmarena',
+    scoreLabel: 'Elo',
+    url: 'https://lmarena.ai/leaderboard/text?category=coding',
+    note: '文本榜 coding 分类，与其他分类分开排名'
+  },
+  {
+    id: 'lmarena-chinese',
+    name: 'LMArena 中文榜',
+    nameEn: 'LMArena Chinese',
+    source: 'lmarena',
+    scoreLabel: 'Elo',
+    url: 'https://lmarena.ai/leaderboard/text?category=chinese',
+    note: '文本榜 chinese 分类，与其他分类分开排名'
   },
   {
     id: 'lmarena-agent',
@@ -50,6 +71,33 @@ export const BOARDS: BoardDef[] = [
     source: 'artificial-analysis',
     scoreLabel: 'Elo',
     url: 'https://artificialanalysis.ai/video/leaderboard/image-to-video'
+  },
+  {
+    id: 'swebench-verified',
+    name: 'SWE-bench Verified',
+    nameEn: 'SWE-bench Verified',
+    source: 'swe-bench',
+    scoreLabel: 'Resolved %',
+    url: 'https://www.swebench.com/',
+    note: '每个模型取最佳 Agent 配置成绩'
+  },
+  {
+    id: 'livebench',
+    name: 'LiveBench 综合榜',
+    nameEn: 'LiveBench',
+    source: 'livebench',
+    scoreLabel: 'Score',
+    url: 'https://livebench.ai/',
+    note: '各分类平均分（0–100）'
+  },
+  {
+    id: 'hf-open-llm',
+    name: 'HF 开源模型榜',
+    nameEn: 'HF Open LLM',
+    source: 'huggingface',
+    scoreLabel: 'Avg',
+    url: 'https://huggingface.co/spaces/open-llm-leaderboard/open_llm_leaderboard',
+    note: '已归档的开源权重榜，仅收录前 500 名'
   }
 ]
 
@@ -63,6 +111,10 @@ export async function fetchBoard(boardId: string): Promise<Entry[]> {
   switch (boardId) {
     case 'lmarena-text':
       return fetchLmArenaBoard('text')
+    case 'lmarena-coding':
+      return fetchLmArenaBoard('text', 'coding')
+    case 'lmarena-chinese':
+      return fetchLmArenaBoard('text', 'chinese')
     case 'lmarena-agent':
       return fetchLmArenaBoard('agent')
     case 'lmarena-search':
@@ -73,6 +125,12 @@ export async function fetchBoard(boardId: string): Promise<Entry[]> {
       return fetchAaIntelligence()
     case 'aa-i2v':
       return fetchAaImageToVideo()
+    case 'swebench-verified':
+      return fetchSweBenchVerified()
+    case 'livebench':
+      return fetchLiveBench()
+    case 'hf-open-llm':
+      return fetchHfOpenLlm()
     default:
       throw new Error(`Unknown board: ${boardId}`)
   }

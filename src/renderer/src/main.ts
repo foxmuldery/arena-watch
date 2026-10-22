@@ -1,4 +1,5 @@
 import './style.css'
+import { canonicalModel } from '../../shared/aliases'
 import type {
   BoardDef,
   ChangeEvent,
@@ -17,9 +18,17 @@ interface BoardListItem extends BoardDef {
   error: string | null
 }
 
+interface RelatedModel {
+  boardId: string
+  model: string
+  current: Entry | null
+  history: (number | null)[]
+}
+
 interface WatchListItem extends WatchItem {
   current: Entry | null
   history: (number | null)[]
+  related: RelatedModel[]
 }
 
 interface SnapshotPair {
@@ -130,7 +139,7 @@ async function renderBoards(): Promise<void> {
     <div class="board-head">
       <div>
         <div class="board-title">${esc(board.name)} <span class="muted">${esc(board.nameEn)}</span></div>
-        <div class="board-meta">更新于 ${fmtTime(board.fetchedAt)} · 共 ${board.entryCount} 个模型${board.error ? ` · <span class="err">刷新失败：${esc(board.error)}</span>` : ''}</div>
+        <div class="board-meta">更新于 ${fmtTime(board.fetchedAt)} · 共 ${board.entryCount} 个模型${board.note ? ` · ${esc(board.note)}` : ''}${board.error ? ` · <span class="err">刷新失败：${esc(board.error)}</span>` : ''}</div>
       </div>
       <div class="board-actions">
         <button id="sub-btn" class="${board.subscribed ? 'subscribed' : ''}">${board.subscribed ? '★ 已订阅' : '☆ 订阅此榜'}</button>
@@ -144,6 +153,18 @@ async function renderBoards(): Promise<void> {
     </table>
     ${board.entryCount > 20 ? '<p class="muted footnote">仅显示前 20 名，完整榜单见源站</p>' : ''}`}
   `
+  const chipsEl = view.querySelector('.chips')
+  chipsEl?.addEventListener(
+    'wheel',
+    (ev) => {
+      const e = ev as WheelEvent
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        chipsEl.scrollLeft += e.deltaY
+        e.preventDefault()
+      }
+    },
+    { passive: false }
+  )
   view.querySelectorAll('[data-board]').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.currentBoardId = (btn as HTMLElement).dataset.board as string
@@ -175,26 +196,45 @@ function sparkline(history: (number | null)[]): string {
 
 async function renderWatch(): Promise<void> {
   const view = $('#view-watch')
+  // Group by canonical name so "Claude Opus 5.5 (High)" and
+  // "claude-opus-5.5" land on one card.
   const groups = new Map<string, WatchListItem[]>()
   for (const w of state.watches) {
-    const list = groups.get(w.model) ?? []
+    const key = canonicalModel(w.model)
+    const list = groups.get(key) ?? []
     list.push(w)
-    groups.set(w.model, list)
+    groups.set(key, list)
   }
-  const cards = [...groups.entries()]
-    .map(([model, items]) => {
-      const rows = items
-        .map((w) => {
-          const cur = w.current
-          return `<div class="watch-row">
-            <span class="watch-board">${esc(boardName(w.boardId))}</span>
+  const cards = [...groups.values()]
+    .map((items) => {
+      const title = items[0].model
+      const byBoard = new Map<string, RelatedModel>()
+      for (const w of items) {
+        for (const r of w.related ?? []) {
+          if (!byBoard.has(r.boardId)) byBoard.set(r.boardId, r)
+        }
+        if (!byBoard.has(w.boardId)) {
+          byBoard.set(w.boardId, { boardId: w.boardId, model: w.model, current: w.current, history: w.history })
+        }
+      }
+      const watchKey = (boardId: string, model: string): string => `${boardId}\u0000${model}`
+      const watchLookup = new Map(items.map((w) => [watchKey(w.boardId, w.model), w]))
+      const order = new Map(state.boards.map((b, i) => [b.id, i]))
+      const rows = [...byBoard.values()]
+        .sort((a, b) => (order.get(a.boardId) ?? 99) - (order.get(b.boardId) ?? 99))
+        .map((row) => {
+          const cur = row.current
+          const watch = watchLookup.get(watchKey(row.boardId, row.model))
+          const alias = row.model !== title ? ` title="${esc(row.model)}"` : ''
+          return `<div class="watch-row"${alias}>
+            <span class="watch-board">${esc(boardName(row.boardId))}</span>
             <span class="watch-rank">${cur ? `第 ${cur.rank} 名 · ${fmtScore(cur.score)}` : '<span class="muted">不在榜单</span>'}</span>
-            ${sparkline(w.history)}
-            <button class="remove-btn" data-remove="${esc(w.id)}" title="取消关注">×</button>
+            ${sparkline(row.history)}
+            ${watch ? `<button class="remove-btn" data-remove="${esc(watch.id)}" title="取消关注">×</button>` : '<span class="remove-btn"></span>'}
           </div>`
         })
         .join('')
-      return `<div class="watch-card"><div class="watch-model">${esc(model)}</div>${rows}</div>`
+      return `<div class="watch-card"><div class="watch-model">${esc(title)}</div>${rows}</div>`
     })
     .join('')
   view.innerHTML = `
@@ -311,7 +351,7 @@ function renderSettings(): void {
     </div>
     <div class="about">
       <p>数据源：LMArena 官方数据集（Hugging Face，CC BY 4.0）；Artificial Analysis 公开榜单页（非官方解析，页面结构变化时可能失效）。</p>
-      <p class="muted">Arena Watch v${esc(state.appVersion || '0.1.0')} · MIT License · 关闭窗口会最小化到托盘，托盘菜单可退出。</p>
+      <p class="muted">Arena Watch v${esc(state.appVersion || '—')} · MIT License · 关闭窗口会最小化到托盘，托盘菜单可退出。</p>
     </div>
   `
   renderUpdateBox()

@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, Menu, Notification, nativeImage, shell, Tray } from 'electron'
+import { mkdirSync } from 'fs'
 import { join } from 'path'
 import { BOARDS, fetchBoard, getBoardDef } from './adapters'
 import { diffBoard, diffWatch } from './diff'
@@ -12,7 +13,8 @@ import {
   onUpdateState,
   setupAutoUpdater
 } from './updater'
-import type { ChangeEvent, Settings } from '../shared/types'
+import { canonicalModel } from '../shared/aliases'
+import type { ChangeEvent, Settings, Snapshot, WatchRelated } from '../shared/types'
 
 let win: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -23,6 +25,23 @@ let quitting = false
 const lastErrors: Record<string, string> = {}
 
 const isDev = !app.isPackaged
+
+/** A slow upstream must not stop the whole refresh pass. */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} 刷新超时（${Math.round(ms / 1000)} 秒）`)), ms)
+    p.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (err) => {
+        clearTimeout(timer)
+        reject(err)
+      }
+    )
+  })
+}
 
 function broadcast(channel: string, payload?: unknown): void {
   win?.webContents.send(channel, payload)
@@ -114,16 +133,21 @@ async function refreshAll(): Promise<{ errors: Record<string, string> }> {
   const newEvents: ChangeEvent[] = []
   for (const def of BOARDS) {
     try {
-      const entries = await fetchBoard(def.id)
+      const entries = await withTimeout(fetchBoard(def.id), 45_000, def.id)
       const prev = store.latestSnapshot(def.id)
       store.pushSnapshot({ boardId: def.id, fetchedAt: new Date().toISOString(), entries })
       delete lastErrors[def.id]
       if (prev) {
-        if (store.isBoardSubscribed(def.id)) {
-          newEvents.push(...diffBoard(def.id, prev.entries, entries, store.settings))
-        }
+        const boardEvents = store.isBoardSubscribed(def.id)
+          ? diffBoard(def.id, prev.entries, entries, store.settings)
+          : []
+        newEvents.push(...boardEvents)
+        // A model that is both watched and covered by its subscribed board
+        // should not report the same move twice in the feed.
+        const covered = new Set(boardEvents.map((e) => `${e.model}\u0000${e.from}\u0000${e.to}`))
         for (const w of store.watchesForBoard(def.id)) {
-          newEvents.push(...diffWatch(def.id, w.model, prev.entries, entries))
+          const watchEvents = diffWatch(def.id, w.model, prev.entries, entries)
+          newEvents.push(...watchEvents.filter((e) => !covered.has(`${e.model}\u0000${e.from}\u0000${e.to}`)))
         }
       }
     } catch (err) {
@@ -185,16 +209,35 @@ function registerIpc(): void {
     return { errors }
   })
 
-  ipcMain.handle('watch:list', () =>
-    store.watches.map((w) => {
-      const latest = store.latestSnapshot(w.boardId)
-      const current = latest?.entries.find((e) => e.model === w.model) ?? null
-      const history = store
-        .snapshotsFor(w.boardId)
-        .map((s) => s.entries.find((e) => e.model === w.model)?.rank ?? null)
-      return { ...w, current, history }
+  ipcMain.handle('watch:list', () => {
+    const keyOf = canonicalModel
+    const histories = new Map<string, Snapshot[]>()
+    for (const def of BOARDS) histories.set(def.id, store.snapshotsFor(def.id))
+
+    return store.watches.map((w) => {
+      const key = keyOf(w.model)
+      const related: WatchRelated[] = []
+      for (const def of BOARDS) {
+        const list = histories.get(def.id) ?? []
+        const latest = list.length ? list[list.length - 1] : undefined
+        if (!latest) continue
+        const entry =
+          latest.entries.find((e) => e.model === w.model) ??
+          latest.entries.find((e) => keyOf(e.model) === key)
+        if (!entry) continue
+        const history = list.map((s) => {
+          const hit = s.entries.find((e) => e.model === entry.model) ?? s.entries.find((e) => keyOf(e.model) === key)
+          return hit?.rank ?? null
+        })
+        related.push({ boardId: def.id, model: entry.model, current: entry, history })
+      }
+      const own =
+        related.find((r) => r.boardId === w.boardId && r.model === w.model) ??
+        related.find((r) => r.boardId === w.boardId) ??
+        null
+      return { ...w, current: own?.current ?? null, history: own?.history ?? [], related }
     })
-  )
+  })
 
   ipcMain.handle('watch:add', (_e, boardId: string, model: string) => {
     getBoardDef(boardId)
@@ -258,7 +301,10 @@ app.on('window-all-closed', () => {
 })
 
 void app.whenReady().then(() => {
-  store = new Store(join(app.getPath('userData'), 'arena-watch.json'))
+  // Allow a portable/testing profile without touching the real user data.
+  const dataDir = process.env['ARENA_WATCH_DATA_DIR'] || app.getPath('userData')
+  if (process.env['ARENA_WATCH_DATA_DIR']) mkdirSync(dataDir, { recursive: true })
+  store = new Store(join(dataDir, 'arena-watch.json'))
   registerIpc()
   createWindow()
   createTray()

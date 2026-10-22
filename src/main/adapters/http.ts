@@ -1,13 +1,26 @@
 import { get as httpsGet } from 'https'
 
 /**
- * Small fetch helper with a node:https fallback.
+ * Small fetch helper with a node:https fallback and retry on upstream
+ * throttling.
  *
  * Some CDNs stall or reject undici's TLS fingerprint while accepting a
  * classic https request (observed with datasets-server.huggingface.co).
  * Trying the global fetch first and falling back keeps the adapters working
  * both in plain Node (smoke tests) and in Electron's main process.
+ *
+ * The Hugging Face datasets server rate-limits bursts with a bare 429, so
+ * retryable statuses back off a few times before a board is marked failed.
  */
+
+const RETRY_DELAYS_MS = [2_000, 5_000]
+
+function isRetryable(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err)
+  return /\b(429|503)\b/.test(msg)
+}
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 function httpsFetchText(url: string, headers: Record<string, string>, redirects = 3): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -33,13 +46,24 @@ function httpsFetchText(url: string, headers: Record<string, string>, redirects 
   })
 }
 
-export async function fetchText(url: string, headers: Record<string, string> = {}): Promise<string> {
+async function fetchOnce(url: string, headers: Record<string, string>): Promise<string> {
   try {
     const res = await fetch(url, { headers, signal: AbortSignal.timeout(20_000) })
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`)
     return await res.text()
   } catch {
     return httpsFetchText(url, headers)
+  }
+}
+
+export async function fetchText(url: string, headers: Record<string, string> = {}): Promise<string> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fetchOnce(url, headers)
+    } catch (err) {
+      if (!isRetryable(err) || attempt >= RETRY_DELAYS_MS.length) throw err
+      await sleep(RETRY_DELAYS_MS[attempt])
+    }
   }
 }
 
