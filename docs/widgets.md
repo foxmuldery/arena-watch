@@ -37,7 +37,7 @@ Electron 退出后小组件继续显示最后一次成功获取的数据。
 
 ## 安装
 
-正式分发包里会有两个 App：
+签名后的正式分发包里会有两个 App：
 
 1. `Arena Watch.app`（Electron 托盘应用，负责取数）；
 2. `Arena Watch Widgets.app`（小组件宿主，必须先运行一次完成注册）。
