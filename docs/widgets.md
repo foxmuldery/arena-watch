@@ -58,9 +58,8 @@ Electron 退出后小组件继续显示最后一次成功获取的数据。
 # 1. 启动带数据桥的 Electron（保持运行）
 npm run dev
 
-# 2. 构建并启动小组件宿主
-cd native && ./build.sh
-open "dist/Arena Watch Widgets.app"      # 或拖进「应用程序」后启动
+# 2. 构建并安装小组件宿主（会复制到 ~/Applications 并启动）
+cd native && ./install.sh
 ```
 
 宿主窗口应显示「已连接」以及榜单/关注/动态数量。随后按上面的步骤添加小组件。
