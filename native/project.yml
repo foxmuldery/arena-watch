@@ -1,0 +1,52 @@
+name: ArenaWatchWidgets
+options:
+  bundleIdPrefix: app.arenawatch
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+    ENABLE_HARDENED_RUNTIME: YES
+    OTHER_CODE_SIGN_FLAGS: "--timestamp=none"
+
+targets:
+  ArenaWatchWidgets:
+    type: application
+    platform: macOS
+    sources:
+      - path: ArenaWatchWidgets/App
+      - path: ArenaWatchWidgets/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.arenawatch.widgets
+        PRODUCT_NAME: Arena Watch Widgets
+        INFOPLIST_FILE: ArenaWatchWidgets/App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ArenaWatchWidgets/App/ArenaWatchWidgets.entitlements
+        MARKETING_VERSION: "0.3.0"
+        CURRENT_PROJECT_VERSION: "1"
+    dependencies:
+      - target: ArenaWatchWidgetExtension
+        embed: true
+        codeSign: true
+
+  ArenaWatchWidgetExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: ArenaWatchWidgets/Widget
+      - path: ArenaWatchWidgets/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.arenawatch.widgets.extension
+        PRODUCT_NAME: ArenaWatchWidgetExtension
+        INFOPLIST_FILE: ArenaWatchWidgets/Widget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ArenaWatchWidgets/Widget/ArenaWatchWidget.entitlements
+        MARKETING_VERSION: "0.3.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SKIP_INSTALL: YES

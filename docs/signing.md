@@ -96,3 +96,47 @@ Arena Watch 目前发布的是**未签名**安装包：
 - macOS 公证通常 2–10 分钟；首次配置证书约 1–2 小时（含苹果审核）。
 - 签名后 macOS 自动更新才能正常安装；Windows 签名主要消除 SmartScreen 警告。
 - 在没有证书之前，Release 会继续发布未签名包，README 里保留安装提示。
+
+## 桌面小组件（WidgetKit）的额外要求
+
+小组件宿主 `Arena Watch Widgets.app` 里嵌着 `ArenaWatchWidgetExtension.appex`，
+两者都必须用 **Developer ID Application** 证书签名（同一 Team），并且：
+
+- 先签 `.appex`，再签宿主 App（`native/build.sh` 已按这个顺序处理）；
+- 两个 App 都要开启 hardened runtime；
+- 未使用 App Group，所以不需要额外的 Provisioning Profile；
+- 发布时建议两个 App 一起公证，否则用户首次打开小组件宿主会被 Gatekeeper 拦。
+
+本机构建：
+
+```bash
+SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" ./native/build.sh
+```
+
+CI 中如果要用同一张 `.p12` 签 Electron 与小组件，需要在 xcodebuild 之前把证书
+导入临时钥匙串，并增加这些 Secrets：
+
+| Secret | 用途 |
+| --- | --- |
+| `MAC_CERT_P12_BASE64` | Developer ID `.p12` 的 base64 |
+| `MAC_CERT_PASSWORD` | `.p12` 导出密码 |
+| `MAC_SIGN_IDENTITY` | 如 `Developer ID Application: Your Name (TEAMID)`，或证书 SHA-1 |
+
+导入后 `native/build.sh` 用 `SIGN_IDENTITY` 签名；Electron 侧继续用
+`CSC_LINK` / `CSC_KEY_PASSWORD`（electron-builder 自己的导入逻辑）。
+没有这些 Secrets 时，Release 工作流只做 ad-hoc 编译检查，不会上传小组件宿主包。
+
+## 验证清单
+
+```bash
+# 签名链
+codesign --verify --deep --strict --verbose=2 "Arena Watch Widgets.app"
+codesign -dv --entitlements - "Arena Watch Widgets.app/Contents/PlugIns/ArenaWatchWidgetExtension.appex"
+
+# 公证（如果做了）
+spctl -a -vvv "Arena Watch Widgets.app"      # 期望 Notarized Developer ID
+xcrun notarytool log <submission-id> ...
+```
+
+安装后在「编辑小组件」里搜索 Arena Watch，四张卡片都应出现；添加后确认：
+仪表台能显示 11 张榜的榜首、关注卡片能显示跨榜排名、动态卡片能显示最新事件。

@@ -1,12 +1,11 @@
 # Arena Watch 🏆
 
-A desktop widget that keeps an eye on AI model leaderboards for you.
-Watch specific models, subscribe to whole boards, and get a native
-notification the moment something moves — a new #1, a model entering or
-leaving the top 10, a big score swing.
+A **native macOS desktop widget** (WidgetKit) that keeps an eye on AI model
+leaderboards for you. Four widgets — dashboard, leaderboard, watched models,
+event feed — plus a tray app that fetches, diffs and notifies.
 
-桌面小组件：盯住 AI 模型排行榜。关注指定模型、订阅整张榜，榜首易主、
-进出前十、分数大变时第一时间收到系统通知。
+macOS 原生桌面小组件（WidgetKit）：仪表台 / 榜单 / 关注模型 / 变化动态
+四张卡片，可以放在桌面或通知中心；后台托盘应用负责取数、快照 diff 与通知。
 
 ## Features
 
@@ -24,14 +23,35 @@ leaving the top 10, a big score swing.
   swaps and score jumps (threshold configurable), all in one timeline.
 - **Notifications** — Native desktop notifications for the changes that
   matter; silent otherwise.
-- **Widget form factor** — Lives in the tray, window is always-on-top
-  (toggleable), close hides to tray, optional launch at login.
+- **Native desktop widgets** — Four WidgetKit cards (仪表台 / 榜单 /
+  关注模型 / 变化动态) on the desktop or in Notification Center. See
+  [docs/widgets.md](docs/widgets.md).
+- **Tray engine** — The Electron app fetches, stores snapshots, computes
+  events, sends notifications and serves the widgets over loopback. Its own
+  window is a control panel: always-on-top (toggleable), close hides to tray,
+  optional launch at login.
 - **Snapshots & diffing** — Every refresh stores a snapshot (up to 60 per
   board); all events are computed by diffing consecutive snapshots, so
   nothing is reported from stale or guessed data.
 - **Auto-update** — Packaged builds check GitHub Releases on launch and
   every six hours; Settings → 检查更新 shows the status and can download
   and install a new version.
+
+## Desktop widgets (WidgetKit)
+
+| Dashboard (large) | Leaderboard | Watched models | Event feed |
+| --- | --- | --- | --- |
+| ![Dashboard widget](docs/screenshots/widget-dashboard.png) | ![Leaderboard widget](docs/screenshots/widget-leaderboard.png) | ![Watchlist widget](docs/screenshots/widget-watchlist.png) | ![Events widget](docs/screenshots/widget-events.png) |
+
+The widgets are native SwiftUI/WidgetKit, not a web view. The Electron app
+serves a compact read-only payload on `127.0.0.1:47832`; the widget host reads
+it, caches the last good payload, and asks WidgetKit for a new timeline every
+~30 minutes. Install the host app once, then add widgets from the desktop or
+Notification Center. Full architecture, build and troubleshooting steps:
+[docs/widgets.md](docs/widgets.md).
+
+> Widget distribution requires a Developer ID signature; until that
+> certificate is configured, releases do not include the widget host bundle.
 
 ## Data sources
 
@@ -65,6 +85,8 @@ npm run smoke      # fetch all boards once and print the top 5 of each
 npm run build      # type-check friendly production build (out/)
 npm run typecheck  # tsc --noEmit
 npm run dist       # package installers with electron-builder (release/)
+
+cd native && ./build.sh   # build the WidgetKit host app (needs Xcode + xcodegen)
 ```
 
 The app icon is generated (not committed): `scripts/generate-icon.mjs`
@@ -78,6 +100,9 @@ src/main/adapters/   one adapter per data source → normalized Entry[]
 src/main/store.ts    JSON store in userData: settings, subscriptions,
                      watches, snapshots, event log
 src/main/diff.ts     snapshot diff → ChangeEvent[] (board-level + watch-level)
+src/main/dashboard.ts compact payload for widgets (boards/watches/events)
+src/main/bridge.ts   loopback HTTP server on 127.0.0.1:47832
+native/              SwiftUI host app + WidgetKit extension (XcodeGen)
 src/main/index.ts    Electron main: tray, widget window, scheduler, IPC,
                      native notifications
 src/preload/         contextBridge API (window.arena)
@@ -98,6 +123,9 @@ Set `ARENA_WATCH_DATA_DIR` to run against a throwaway profile instead of
 - [x] Cross-board model aliases (the same model appears under different
       names/configs on different boards)
 - [x] Screenshots & a proper landing README
+- [x] Native macOS desktop widgets (WidgetKit): dashboard, leaderboard,
+      watchlist, event feed
+- [ ] Ship the signed widget host in the release dmg
 - [ ] macOS code signing & notarization, Windows signing — see
       [docs/signing.md](docs/signing.md) for the required certificates and
       CI variables (blocks auto-update installs on macOS)

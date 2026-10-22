@@ -4,6 +4,8 @@ import { join } from 'path'
 import { BOARDS, fetchBoard, getBoardDef } from './adapters'
 import { diffBoard, diffWatch } from './diff'
 import { Store } from './store'
+import { startDashboardBridge, stopDashboardBridge } from './bridge'
+import { buildDashboard } from './dashboard'
 import { ICON_DATA_URL, TRAY_ICON_DATA_URL } from './icon-data'
 import {
   checkForUpdates,
@@ -299,6 +301,7 @@ function registerIpc(): void {
 
 app.on('before-quit', () => {
   quitting = true
+  stopDashboardBridge()
 })
 
 // Keep the app alive in the tray when all windows are closed/hidden.
@@ -311,6 +314,7 @@ void app.whenReady().then(() => {
   const dataDir = process.env['ARENA_WATCH_DATA_DIR'] || app.getPath('userData')
   if (process.env['ARENA_WATCH_DATA_DIR']) mkdirSync(dataDir, { recursive: true })
   store = new Store(join(dataDir, 'arena-watch.json'))
+  startDashboardBridge(() => buildDashboard(store, app.getVersion()))
   registerIpc()
   createWindow()
   createTray()

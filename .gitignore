@@ -7,3 +7,8 @@ dist/
 .muse-github-snapshot-sync.json
 build/icon.png
 src/main/icon-data.ts
+native/build/
+native/dist/
+native/ArenaWatchWidgets.xcodeproj/
+native/ArenaWatchWidgets/App/Resources/AppIcon.icns
+native/.swift-cache/
