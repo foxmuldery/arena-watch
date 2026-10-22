@@ -52,6 +52,21 @@ Electron 退出后小组件继续显示最后一次成功获取的数据。
 > 小组件由系统按时间线刷新（通常 15–30 分钟一次），不是实时面板。
 > 想要立即看到新数据，先在 Arena Watch 里手动刷新，再等系统下一次刷新小组件。
 
+## 本机试跑
+
+```bash
+# 1. 启动带数据桥的 Electron（保持运行）
+npm run dev
+
+# 2. 构建并启动小组件宿主
+cd native && ./build.sh
+open "dist/Arena Watch Widgets.app"      # 或拖进「应用程序」后启动
+```
+
+宿主窗口应显示「已连接」以及榜单/关注/动态数量。随后按上面的步骤添加小组件。
+如果只是开发调试，宿主放在 `native/dist` 也可以；正式使用时请放到
+`/Applications`，否则系统可能不会在小组件库里列出它。
+
 ## 构建（本机）
 
 需要 Xcode 26+ 与 [XcodeGen](https://github.com/yonaskolb/XcodeGen)：

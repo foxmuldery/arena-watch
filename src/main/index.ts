@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain, Menu, Notification, nativeImage, shell, Tray } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, nativeImage, shell, Tray } from 'electron'
+import { execFile } from 'child_process'
 import { mkdirSync } from 'fs'
 import { join } from 'path'
 import { BOARDS, fetchBoard, getBoardDef } from './adapters'
@@ -102,6 +103,7 @@ function createTray(): void {
   const menu = Menu.buildFromTemplate([
     { label: '显示 / 隐藏', click: toggleWindow },
     { label: '立即刷新', click: () => void refreshAll() },
+    { label: '桌面小组件…', click: () => openWidgetHost() },
     { type: 'separator' },
     {
       label: '退出 Arena Watch',
@@ -113,6 +115,19 @@ function createTray(): void {
   ])
   tray.setContextMenu(menu)
   tray.on('click', toggleWindow)
+}
+
+function openWidgetHost(): void {
+  if (process.platform !== 'darwin') return
+  execFile('open', ['-b', 'app.arenawatch.widgets'], (err) => {
+    if (!err) return
+    void dialog.showMessageBox({
+      type: 'info',
+      title: '桌面小组件',
+      message: '未找到「Arena Watch Widgets」',
+      detail: '请先安装小组件宿主 App（见 docs/widgets.md），启动一次后再从桌面或通知中心添加小组件。'
+    })
+  })
 }
 
 function notify(events: ChangeEvent[]): void {
