@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arena Watch</title>
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <div class="brand">🏆 Arena Watch</div>
+        <div class="header-actions">
+          <span id="status" class="status"></span>
+          <button id="refresh-btn" title="立即刷新" aria-label="立即刷新">⟳</button>
+        </div>
+      </header>
+      <nav id="tabs">
+        <button data-tab="boards" class="active">榜单</button>
+        <button data-tab="watch">关注</button>
+        <button data-tab="events">动态</button>
+        <button data-tab="settings">设置</button>
+      </nav>
+      <main>
+        <section id="view-boards"></section>
+        <section id="view-watch" class="hidden"></section>
+        <section id="view-events" class="hidden"></section>
+        <section id="view-settings" class="hidden"></section>
+      </main>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
